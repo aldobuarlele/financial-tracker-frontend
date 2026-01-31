@@ -94,14 +94,20 @@ def tambah_transaksi():
         return redirect(url_for('login'))
 
     headers = get_auth_headers()
+    
+    mode = request.args.get('mode', 'EXPENSE') 
 
     if request.method == 'POST':
+        raw_amount = request.form.get('amount', '0')
+        clean_amount = raw_amount.replace('.', '')
+
         data_transaksi = {
             "walletId": request.form.get('wallet_id'),
             "categoryId": request.form.get('category_id'),
-            "amount": request.form.get('amount'),
+            "amount": clean_amount,
             "description": request.form.get('description'),
-            "type": request.form.get('type')
+            "type": request.form.get('type'),
+            "transactionDate": request.form.get('transaction_date')
         }
         
         try:
@@ -110,7 +116,7 @@ def tambah_transaksi():
                 flash("Transaksi berhasil disimpan!", "success")
                 return redirect(url_for('dashboard'))
             else:
-                flash(f"Gagal menyimpan (Status {kirim.status_code})", "danger")
+                flash(f"Gagal menyimpan: {kirim.text}", "danger")
         except Exception as e:
             flash(f"Error sistem: {e}", "danger")
 
@@ -122,13 +128,67 @@ def tambah_transaksi():
         if resp_wallets.status_code == 200:
             wallets = resp_wallets.json()
 
-        resp_categories = requests.get(f"{API_BASE_URL}/categories", headers=headers)
+        resp_categories = requests.get(f"{API_BASE_URL}/categories?type={mode}", headers=headers)
         if resp_categories.status_code == 200:
             categories = resp_categories.json()
     except:
         pass
 
-    return render_template('form_transaksi.html', wallets=wallets, categories=categories)
+    return render_template('form_transaksi.html', wallets=wallets, categories=categories, mode=mode)
+
+@app.route('/tambah-dompet', methods=['GET', 'POST'])
+def tambah_dompet():
+    if 'token' not in session:
+        return redirect(url_for('login'))
+    
+    headers = get_auth_headers()
+
+    if request.method == 'POST':
+        raw_balance = request.form.get('balance', '0')
+        clean_balance = raw_balance.replace('.', '')
+
+        data = {
+            "walletName": request.form.get('wallet_name'),
+            "walletType": request.form.get('wallet_type'),
+            "balance": clean_balance
+        }
+
+        try:
+            kirim = requests.post(f"{API_BASE_URL}/wallets", json=data, headers=headers)
+            if kirim.status_code == 200:
+                flash("Dompet berhasil dibuat!", "success")
+                return redirect(url_for('dashboard'))
+            else:
+                flash(f"Gagal: {kirim.text}", "danger")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    return render_template('tambah_dompet.html')
+
+@app.route('/tambah-kategori', methods=['GET', 'POST'])
+def tambah_kategori():
+    if 'token' not in session:
+        return redirect(url_for('login'))
+    
+    headers = get_auth_headers()
+
+    if request.method == 'POST':
+        data = {
+            "name": request.form.get('name'),
+            "type": request.form.get('type')
+        }
+
+        try:
+            kirim = requests.post(f"{API_BASE_URL}/categories", json=data, headers=headers)
+            if kirim.status_code == 200:
+                flash("Kategori berhasil dibuat!", "success")
+                return redirect(url_for('tambah_transaksi', mode=data['type']))
+            else:
+                flash(f"Gagal: {kirim.text}", "danger")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    return render_template('tambah_kategori.html')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

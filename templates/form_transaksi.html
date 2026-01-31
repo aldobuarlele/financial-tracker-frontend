@@ -2,17 +2,63 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Tambah Transaksi</title>
+    <title>Catat Transaksi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Style untuk Tab mirip Aplikasi Mobile */
+        .mode-switch {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .mode-btn {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            text-decoration: none;
+            font-weight: bold;
+            color: #6c757d;
+            background: #f8f9fa;
+        }
+        .mode-btn.active-expense {
+            background: #fff;
+            color: #dc3545; /* Merah */
+            border-bottom: 3px solid #dc3545;
+        }
+        .mode-btn.active-income {
+            background: #fff;
+            color: #198754; /* Hijau */
+            border-bottom: 3px solid #198754;
+        }
+        .amount-input {
+            font-size: 2rem;
+            font-weight: bold;
+            border: none;
+            border-bottom: 2px solid #ccc;
+            border-radius: 0;
+            background: transparent;
+        }
+        .amount-input:focus {
+            box-shadow: none;
+            border-bottom-color: #0d6efd;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
-    <div class="container mt-5" style="max-width: 600px;">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">📝 Catat Transaksi Baru</h4>
+    <div class="container mt-4" style="max-width: 500px;">
+        <div class="card shadow-sm border-0">
+            
+            <div class="mode-switch">
+                <a href="/tambah?mode=INCOME" class="mode-btn {{ 'active-income' if mode == 'INCOME' }}">
+                    Income
+                </a>
+                <a href="/tambah?mode=EXPENSE" class="mode-btn {{ 'active-expense' if mode == 'EXPENSE' }}">
+                    Expense
+                </a>
             </div>
-            <div class="card-body">
+
+            <div class="card-body p-4">
                 
                 {% with messages = get_flashed_messages(with_categories=true) %}
                   {% if messages %}
@@ -22,52 +68,82 @@
                   {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="/tambah">
-                    <div class="mb-3">
-                        <label class="form-label">Pilih Dompet</label>
-                        <select name="wallet_id" class="form-select" required>
-                            {% for w in wallets %}
-                            <option value="{{ w.id }}">{{ w.walletName }} (Sal: Rp {{ "{:,.0f}".format(w.balance) }})</option>
-                            {% endfor %}
-                        </select>
+                <form method="POST" action="/tambah?mode={{ mode }}">
+                    
+                    <input type="hidden" name="type" value="{{ mode }}">
+
+                    <div class="mb-4">
+                        <label class="text-muted small">Date</label>
+                        <input type="datetime-local" id="trxDate" name="transaction_date" class="form-control border-0 border-bottom">
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Kategori</label>
-                        <select name="category_id" class="form-select" required>
-                            <option value="" disabled selected>-- Pilih Kategori --</option>
+                    <div class="mb-4">
+                        <label class="text-muted small">Amount</label>
+                        <div class="d-flex align-items-center">
+                            <span class="fs-2 me-2 text-muted">Rp</span>
+                            <input type="text" id="amountDisplay" name="amount" class="form-control amount-input" placeholder="0" required autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small">Category</label>
+                        <select name="category_id" class="form-select border-0 border-bottom py-2" required>
+                            <option value="" disabled selected>-- Select Category --</option>
                             {% for c in categories %}
-                            <option value="{{ c.id }}">{{ c.name }} ({{ c.type }})</option>
+                            <option value="{{ c.id }}">{{ c.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Jenis</label>
-                        <select name="type" class="form-select" required>
-                            <option value="EXPENSE">🔴 Pengeluaran (Uang Keluar)</option>
-                            <option value="INCOME">🟢 Pemasukan (Uang Masuk)</option>
+                    <div class="mb-4">
+                        <label class="text-muted small">Wallet</label>
+                        <select name="wallet_id" class="form-select border-0 border-bottom py-2" required>
+                            {% for w in wallets %}
+                            <option value="{{ w.id }}">{{ w.walletName }} (Sal: {{ "{:,.0f}".format(w.balance) }})</option>
+                            {% endfor %}
                         </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Jumlah (Rp)</label>
-                        <input type="number" name="amount" class="form-control" placeholder="Contoh: 50000" required>
+                    <div class="mb-4">
+                        <label class="text-muted small">Note</label>
+                        <input type="text" name="description" class="form-control border-0 border-bottom py-2" placeholder="Write a note">
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Keterangan</label>
-                        <input type="text" name="description" class="form-control" placeholder="Contoh: Beli Nasi Padang" required>
+                    <div class="d-grid mt-5">
+                        <button type="submit" class="btn {{ 'btn-success' if mode == 'INCOME' else 'btn-danger' }} btn-lg">
+                            Save {{ 'Income' if mode == 'INCOME' else 'Expense' }}
+                        </button>
+                        <a href="/" class="btn btn-link text-muted mt-2">Cancel</a>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success">Simpan Transaksi</button>
-                        <a href="/" class="btn btn-secondary">Batal / Kembali</a>
-                    </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        // 1. Script Tanggal Default Hari Ini
+        window.onload = function() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('trxDate').value = now.toISOString().slice(0,16);
+        };
+
+        // 2. Script Format Rupiah (Titik Otomatis)
+        const amountInput = document.getElementById('amountDisplay');
+
+        amountInput.addEventListener('keyup', function(e) {
+            // Hapus karakter selain angka
+            let value = this.value.replace(/[^0-9]/g, '');
+            
+            // Format jadi ribuan (contoh: 300000 -> 300.000)
+            if (value) {
+                value = parseInt(value, 10).toLocaleString('id-ID');
+            }
+            
+            this.value = value;
+        });
+    </script>
 
 </body>
 </html>
