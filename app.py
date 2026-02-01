@@ -229,6 +229,62 @@ def tambah_kategori():
 
     return render_template('tambah_kategori.html', parents=parents, preset_type=preset_type)
 
+
+@app.route('/edit/<int:transaction_id>', methods=['GET', 'POST'])
+def edit_transaksi(transaction_id):
+    if 'token' not in session:
+        return redirect(url_for('login'))
+    
+    headers = get_auth_headers()
+
+    if request.method == 'POST':
+        raw_amount = request.form.get('amount', '0')
+        clean_amount = raw_amount.replace('.', '')
+        
+        trx_date = request.form.get('transaction_date')
+        if trx_date and len(trx_date) == 16: 
+            trx_date += ":00"
+
+        data_update = {
+            "walletId": request.form.get('wallet_id'),
+            "categoryId": request.form.get('category_id'),
+            "amount": clean_amount,
+            "description": request.form.get('description'),
+            "type": request.form.get('type'),
+            "transactionDate": trx_date
+        }
+
+        try:
+            kirim = requests.put(f"{API_BASE_URL}/transactions/{transaction_id}", json=data_update, headers=headers)
+            if kirim.status_code == 200:
+                flash("Transaksi berhasil diperbarui!", "success")
+                return redirect(url_for('dashboard'))
+            else:
+                flash(f"Gagal update: {kirim.text}", "danger")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    try:
+        resp_trx = requests.get(f"{API_BASE_URL}/transactions/{transaction_id}", headers=headers)
+        if resp_trx.status_code != 200:
+            flash("Transaksi tidak ditemukan", "danger")
+            return redirect(url_for('dashboard'))
+        transaction = resp_trx.json()
+    except:
+        return redirect(url_for('dashboard'))
+
+    wallets = []
+    categories = []
+    try:
+        wallets = requests.get(f"{API_BASE_URL}/wallets", headers=headers).json()
+        cat_type = transaction['transactionType']
+        raw_cats = requests.get(f"{API_BASE_URL}/categories?type={cat_type}", headers=headers).json()
+        categories = organize_categories(raw_cats)
+    except:
+        pass
+
+    return render_template('edit_transaksi.html', transaction=transaction, wallets=wallets, categories=categories)
+
 @app.route('/kalender')
 def kalender():
     if 'token' not in session:

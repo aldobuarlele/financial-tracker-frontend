@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Transaksi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .amount-input {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5" style="max-width: 500px;">
+        <div class="card shadow border-0">
+            <div class="card-header bg-warning text-dark fw-bold">
+                ✏️ Edit Transaksi
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    
+                    <input type="hidden" name="type" value="{{ transaction.transactionType }}">
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Tanggal</label>
+                        <input type="datetime-local" name="transaction_date" 
+                               value="{{ transaction.transactionDate[:16] }}" 
+                               class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Jumlah</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 fs-4">Rp</span>
+                            <input type="text" id="amountDisplay" name="amount" 
+                                   value="{{ '{:,.0f}'.format(transaction.amount).replace(',', '.') }}" 
+                                   class="form-control amount-input border-start-0" 
+                                   required autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Kategori</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}" {% if transaction.category and c.id == transaction.category.id %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Dompet</label>
+                        <select name="wallet_id" class="form-select" required>
+                            {% for w in wallets %}
+                            <option value="{{ w.id }}" {% if w.id == transaction.wallet.id %}selected{% endif %}>
+                                {{ w.walletName }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-muted small">Catatan</label>
+                        <input type="text" name="description" value="{{ transaction.description }}" class="form-control">
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning btn-lg">Update Perubahan</button>
+                        <a href="/" class="btn btn-link text-muted">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const amountInput = document.getElementById('amountDisplay');
+
+        amountInput.addEventListener('keyup', function(e) {
+            let value = this.value.replace(/[^0-9]/g, '');
+            
+            if (value) {
+                value = parseInt(value, 10).toLocaleString('id-ID');
+            }
+            
+            this.value = value;
+        });
+    </script>
+</body>
+</html>
