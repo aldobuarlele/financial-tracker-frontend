@@ -29,6 +29,12 @@
             color: #198754; /* Hijau */
             border-bottom: 3px solid #198754;
         }
+        /* Tambahan Style untuk Transfer (Biru) */
+        .mode-btn.active-transfer {
+            background: #fff;
+            color: #0d6efd; /* Biru */
+            border-bottom: 3px solid #0d6efd;
+        }
         .amount-input {
             font-size: 2rem;
             font-weight: bold;
@@ -54,6 +60,9 @@
                 </a>
                 <a href="/tambah?mode=EXPENSE" class="mode-btn {{ 'active-expense' if mode == 'EXPENSE' }}">
                     Expense
+                </a>
+                <a href="/tambah?mode=TRANSFER" class="mode-btn {{ 'active-transfer' if mode == 'TRANSFER' }}">
+                    Transfer
                 </a>
             </div>
 
@@ -84,6 +93,7 @@
                         </div>
                     </div>
 
+                    {% if mode != 'TRANSFER' %}
                     <div class="mb-4">
                         <label class="text-muted small">Category</label>
                         <div class="input-group">
@@ -98,9 +108,12 @@
                             </a>
                         </div>
                     </div>
+                    {% endif %}
 
                     <div class="mb-4">
-                        <label class="text-muted small">Wallet</label>
+                        <label class="text-muted small">
+                            {% if mode == 'TRANSFER' %}From Wallet (Sumber){% else %}Wallet{% endif %}
+                        </label>
                         <div class="input-group">
                             <select name="wallet_id" class="form-select border-0 border-bottom py-2 rounded-0" required>
                                 {% for w in wallets %}
@@ -113,14 +126,38 @@
                         </div>
                     </div>
 
+                    {% if mode == 'TRANSFER' %}
+                    <div class="mb-4">
+                        <label class="text-muted small">To Wallet (Tujuan)</label>
+                        <div class="input-group">
+                            <select name="target_wallet_id" class="form-select border-0 border-bottom py-2 rounded-0" required>
+                                <option value="" disabled selected>-- Select Target Wallet --</option>
+                                {% for w in wallets %}
+                                <option value="{{ w.id }}">{{ w.walletName }}</option>
+                                {% endfor %}
+                            </select>
+                            <a href="/tambah-dompet" class="btn btn-outline-secondary border-0 border-bottom rounded-0" title="Tambah Dompet Baru">
+                                ➕
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="mb-4">
                         <label class="text-muted small">Note</label>
                         <input type="text" name="description" class="form-control border-0 border-bottom py-2" placeholder="Write a note">
                     </div>
 
                     <div class="d-grid mt-5">
-                        <button type="submit" class="btn {{ 'btn-success' if mode == 'INCOME' else 'btn-danger' }} btn-lg">
-                            Save {{ 'Income' if mode == 'INCOME' else 'Expense' }}
+                        <button type="submit" class="btn 
+                            {% if mode == 'INCOME' %}btn-success
+                            {% elif mode == 'EXPENSE' %}btn-danger
+                            {% else %}btn-primary{% endif %} 
+                            btn-lg">
+                            Save 
+                            {% if mode == 'INCOME' %}Income
+                            {% elif mode == 'EXPENSE' %}Expense
+                            {% else %}Transfer{% endif %}
                         </button>
                         <a href="/" class="btn btn-link text-muted mt-2">Cancel</a>
                     </div>
@@ -141,11 +178,9 @@
 
         amountInput.addEventListener('keyup', function(e) {
             let value = this.value.replace(/[^0-9]/g, '');
-            
             if (value) {
                 value = parseInt(value, 10).toLocaleString('id-ID');
             }
-            
             this.value = value;
         });
     </script>

@@ -50,7 +50,7 @@ def login():
             if response.status_code == 200:
                 data = response.json()
                 session['token'] = data.get('accessToken')
-                session['username'] = username
+                session['user'] = {'username': username} 
                 return redirect(url_for('dashboard'))
             else:
                 flash('Login Gagal! Username atau Password salah.', 'danger')
@@ -75,8 +75,11 @@ def dashboard():
     transactions = []
     total_saldo = 0
     username = session.get('user', {}).get('username', 'User')
+    user_role = 'CHILD' 
     
     family_members = {} 
+
+    search_query = request.args.get('q', '').lower()
 
     try:
         resp_wallets = requests.get(f"{API_BASE_URL}/wallets", headers=headers)
@@ -86,40 +89,67 @@ def dashboard():
 
         resp_trx = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
         if resp_trx.status_code == 200:
-            transactions = resp_trx.json()
+            raw_transactions = resp_trx.json()
+            
+            if search_query:
+                transactions = []
+                for t in raw_transactions:
+                    desc = t.get('description', '').lower() if t.get('description') else ''
+                    cat = t['category']['name'].lower() if t.get('category') else ''
+                    amt = str(t['amount'])
+                    date = t['transactionDate']
+                    
+                    if search_query in desc or search_query in cat or search_query in amt or search_query in date:
+                        transactions.append(t)
+            else:
+                transactions = raw_transactions
 
         resp_family = requests.get(f"{API_BASE_URL}/users/family", headers=headers)
         if resp_family.status_code == 200:
             members_list = resp_family.json()
             for m in members_list:
                 family_members[m['id']] = m['username']
+                if m['username'] == username:
+                    user_role = m['role']
                 
     except Exception as e:
         print(f"Error: {e}")
 
-    chart_labels = []
-    chart_values = []
     expense_data = {}
+    income_data = {}
 
     for t in transactions:
+        cat_name = t['category']['name'] if t['category'] else 'Lainnya'
+        
         if t['transactionType'] == 'EXPENSE':
-            cat_name = t['category']['name'] if t['category'] else 'Uncategorized'
             if cat_name in expense_data:
                 expense_data[cat_name] += t['amount']
             else:
                 expense_data[cat_name] = t['amount']
+        elif t['transactionType'] == 'INCOME':
+            if cat_name in income_data:
+                income_data[cat_name] += t['amount']
+            else:
+                income_data[cat_name] = t['amount']
 
-    chart_labels = list(expense_data.keys())
-    chart_values = list(expense_data.values())
+    expense_labels = list(expense_data.keys())
+    expense_values = list(expense_data.values())
+    
+    income_labels = list(income_data.keys())
+    income_values = list(income_data.values())
 
     return render_template('dashboard.html', 
                            wallets=wallets, 
                            transactions=transactions, 
                            total_saldo=total_saldo,
                            username=username,
-                           chart_labels=chart_labels, 
-                           chart_values=chart_values,
-                           family_members=family_members)
+                           role=user_role,
+                           expense_labels=expense_labels, 
+                           expense_values=expense_values,
+                           income_labels=income_labels,
+                           income_values=income_values,
+                           family_members=family_members,
+                           search_query=search_query)
 
 @app.route('/tambah', methods=['GET', 'POST'])
 def tambah_transaksi():
@@ -133,15 +163,24 @@ def tambah_transaksi():
     if request.method == 'POST':
         raw_amount = request.form.get('amount', '0')
         clean_amount = raw_amount.replace('.', '')
+        
+        trx_date = request.form.get('transaction_date')
+        if trx_date and len(trx_date) == 16: 
+            trx_date += ":00"
+
+        trx_type = request.form.get('type')
 
         data_transaksi = {
             "walletId": request.form.get('wallet_id'),
             "categoryId": request.form.get('category_id'),
             "amount": clean_amount,
             "description": request.form.get('description'),
-            "type": request.form.get('type'),
-            "transactionDate": request.form.get('transaction_date')
+            "type": trx_type,
+            "transactionDate": trx_date
         }
+        
+        if trx_type == 'TRANSFER':
+             data_transaksi["targetWalletId"] = request.form.get('target_wallet_id')
         
         try:
             kirim = requests.post(f"{API_BASE_URL}/transactions", json=data_transaksi, headers=headers)
@@ -161,10 +200,11 @@ def tambah_transaksi():
         if resp_wallets.status_code == 200:
             wallets = resp_wallets.json()
 
-        resp_categories = requests.get(f"{API_BASE_URL}/categories?type={mode}", headers=headers)
-        if resp_categories.status_code == 200:
-            raw_cats = resp_categories.json()
-            categories = organize_categories(raw_cats)
+        if mode != 'TRANSFER':
+            resp_categories = requests.get(f"{API_BASE_URL}/categories?type={mode}", headers=headers)
+            if resp_categories.status_code == 200:
+                raw_cats = resp_categories.json()
+                categories = organize_categories(raw_cats)
     except:
         pass
 
@@ -253,15 +293,20 @@ def edit_transaksi(transaction_id):
         trx_date = request.form.get('transaction_date')
         if trx_date and len(trx_date) == 16: 
             trx_date += ":00"
+        
+        trx_type = request.form.get('type')
 
         data_update = {
             "walletId": request.form.get('wallet_id'),
             "categoryId": request.form.get('category_id'),
             "amount": clean_amount,
             "description": request.form.get('description'),
-            "type": request.form.get('type'),
+            "type": trx_type,
             "transactionDate": trx_date
         }
+
+        if trx_type == 'TRANSFER':
+             data_update["targetWalletId"] = request.form.get('target_wallet_id')
 
         try:
             kirim = requests.put(f"{API_BASE_URL}/transactions/{transaction_id}", json=data_update, headers=headers)
@@ -287,8 +332,10 @@ def edit_transaksi(transaction_id):
     try:
         wallets = requests.get(f"{API_BASE_URL}/wallets", headers=headers).json()
         cat_type = transaction['transactionType']
-        raw_cats = requests.get(f"{API_BASE_URL}/categories?type={cat_type}", headers=headers).json()
-        categories = organize_categories(raw_cats)
+        
+        if cat_type != 'TRANSFER':
+            raw_cats = requests.get(f"{API_BASE_URL}/categories?type={cat_type}", headers=headers).json()
+            categories = organize_categories(raw_cats)
     except:
         pass
 
@@ -317,7 +364,8 @@ def kalender():
                 if date_str not in summary:
                     summary[date_str] = {'INCOME': 0, 'EXPENSE': 0}
                 
-                summary[date_str][jenis] += amount
+                if jenis in ['INCOME', 'EXPENSE']:
+                    summary[date_str][jenis] += amount
 
             for date, vals in summary.items():
                 if vals['INCOME'] > 0:
@@ -361,7 +409,7 @@ def statistik():
             for t in transactions:
                 if t['transactionType'] == 'INCOME':
                     total_income += t['amount']
-                else:
+                elif t['transactionType'] == 'EXPENSE':
                     total_expense += t['amount']
 
         resp_wallet = requests.get(f"{API_BASE_URL}/wallets", headers=headers)

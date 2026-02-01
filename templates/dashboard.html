@@ -10,9 +10,9 @@
 
     <nav class="navbar navbar-dark bg-primary mb-4">
         <div class="container d-flex justify-content-between">
-            <span class="navbar-brand mb-0 h1">💰 Financial Tracker (Family)</span>
+            <span class="navbar-brand mb-0 h1">💰 Financial Tracker</span>
             <div class="d-flex align-items-center">
-                <span class="text-white me-3">Halo, {{ username }}</span>
+                <span class="text-white me-3 fw-bold">Halo, {{ username }}</span>
                 <a href="/logout" class="btn btn-sm btn-danger">Logout</a>
             </div>
         </div>
@@ -22,19 +22,26 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center gap-3">
-                <h2 class="mb-0">Dashboard Keluarga</h2>
-                <a href="/kalender" class="btn btn-outline-primary btn-sm">📅 Lihat Kalender</a>
+                <h2 class="mb-0">Dashboard</h2>
+                <a href="/kalender" class="btn btn-outline-primary btn-sm">📅 Kalender</a>
                 <a href="/statistik" class="btn btn-outline-dark btn-sm">📊 Laporan</a>
             </div>
             
             <div class="d-flex gap-2">
-                <a href="/tambah?mode=INCOME" class="btn btn-success btn-lg shadow-sm">+ Pemasukan</a>
-                <a href="/tambah?mode=EXPENSE" class="btn btn-danger btn-lg shadow-sm">- Pengeluaran</a>
+                <a href="/tambah?mode=INCOME" class="btn btn-success btn-lg shadow-sm">+ Masuk</a>
+                <a href="/tambah?mode=EXPENSE" class="btn btn-danger btn-lg shadow-sm">- Keluar</a>
+                <a href="/tambah?mode=TRANSFER" class="btn btn-primary btn-lg shadow-sm">⇄ Transfer</a>
             </div>
         </div>
 
         <div class="alert alert-info shadow-sm d-flex justify-content-between align-items-center">
-            <span class="fs-5">Total Aset Keluarga:</span>
+            <span class="fs-5">
+                {% if role == 'PARENT' %}
+                    Total Aset Keluarga:
+                {% else %}
+                    Total Aset User:
+                {% endif %}
+            </span>
             <strong class="fs-3">Rp {{ "{:,.0f}".format(total_saldo).replace(',', '.') }}</strong>
         </div>
 
@@ -62,7 +69,14 @@
         <div class="row">
             
             <div class="col-md-8 mb-4">
-                <h4 class="mb-3">Riwayat Transaksi</h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">Riwayat Transaksi</h4>
+                    <form action="/" method="GET" class="d-flex gap-2">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Cari transaksi..." value="{{ search_query }}">
+                        <button type="submit" class="btn btn-secondary btn-sm">Cari</button>
+                    </form>
+                </div>
+
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-0">
                         <table class="table table-hover mb-0 align-middle">
@@ -84,15 +98,23 @@
                                         <span class="badge bg-info text-dark">{{ family_members.get(t.userId, 'Unknown') }}</span>
                                     </td>
                                     <td>
-                                        {% if t.category %}
+                                        {% if t.transactionType == 'TRANSFER' %}
+                                            <span class="badge bg-primary">TRANSFER</span>
+                                        {% elif t.category %}
                                             <span class="badge bg-secondary">{{ t.category.name }}</span>
                                         {% else %}
                                             <span class="badge bg-light text-dark">-</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ t.description }}</td>
-                                    <td class="text-end pe-3 {{ 'text-success fw-bold' if t.transactionType == 'INCOME' else 'text-danger fw-bold' }}">
-                                        {{ "+" if t.transactionType == 'INCOME' else "-" }} 
+                                    <td class="text-end pe-3 fw-bold 
+                                        {% if t.transactionType == 'INCOME' %} text-success 
+                                        {% elif t.transactionType == 'EXPENSE' %} text-danger 
+                                        {% else %} text-primary {% endif %}">
+                                        
+                                        {% if t.transactionType == 'INCOME' %}+
+                                        {% elif t.transactionType == 'EXPENSE' %}-
+                                        {% else %}⇄{% endif %} 
                                         Rp {{ "{:,.0f}".format(t.amount).replace(',', '.') }}
                                     </td>
                                     
@@ -110,7 +132,13 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">Belum ada transaksi keluarga.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        {% if search_query %}
+                                            Tidak ditemukan transaksi dengan kata kunci "{{ search_query }}".
+                                        {% else %}
+                                            Belum ada transaksi keluarga.
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -120,15 +148,28 @@
             </div>
 
             <div class="col-md-4">
-                <h4 class="mb-3">Analisis Pengeluaran</h4>
-                <div class="card shadow-sm border-0">
+                <h4 class="mb-3">Analisis Keuangan</h4>
+                
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-header bg-danger text-white">Pengeluaran</div>
                     <div class="card-body">
                         <canvas id="expenseChart"></canvas>
-                        {% if not chart_values %}
-                            <p class="text-center text-muted mt-5 mb-5">Belum ada data pengeluaran.</p>
+                        {% if not expense_values %}
+                            <p class="text-center text-muted mt-3 small">Belum ada data.</p>
                         {% endif %}
                     </div>
                 </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white">Pemasukan</div>
+                    <div class="card-body">
+                        <canvas id="incomeChart"></canvas>
+                        {% if not income_values %}
+                            <p class="text-center text-muted mt-3 small">Belum ada data.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -136,32 +177,49 @@
     <div class="mb-5"></div>
 
     <script>
-        const ctx = document.getElementById('expenseChart');
-        
-        const labels = {{ chart_labels | tojson }};
-        const data = {{ chart_values | tojson }};
+        // Chart Pengeluaran
+        const ctxExp = document.getElementById('expenseChart');
+        // 'default([])' mencegah error jika data kosong/undefined
+        const expLabels = {{ expense_labels | tojson | default([]) }};
+        const expData = {{ expense_values | tojson | default([]) }};
 
-        if (data && data.length > 0) {
-            new Chart(ctx, {
+        if (expData.length > 0) {
+            new Chart(ctxExp, {
                 type: 'doughnut',
                 data: {
-                    labels: labels,
+                    labels: expLabels,
                     datasets: [{
-                        label: 'Total Pengeluaran (Rp)',
-                        data: data,
-                        backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', 
-                            '#4BC0C0', '#9966FF', '#FF9F40'
-                        ],
-                        hoverOffset: 4
+                        data: expData,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
                     }]
                 },
-                options: {
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
+                options: { 
+                    plugins: { 
+                        legend: { position: 'bottom' }
+                    } 
+                }
+            });
+        }
+
+        // Chart Pemasukan
+        const ctxInc = document.getElementById('incomeChart');
+        const incLabels = {{ income_labels | tojson | default([]) }};
+        const incData = {{ income_values | tojson | default([]) }};
+
+        if (incData.length > 0) {
+            new Chart(ctxInc, {
+                type: 'doughnut',
+                data: {
+                    labels: incLabels,
+                    datasets: [{
+                        data: incData,
+                        backgroundColor: ['#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e67e22'],
+                    }]
+                },
+                options: { 
+                    plugins: { 
+                        legend: { position: 'bottom' }
+                    } 
                 }
             });
         }

@@ -40,27 +40,52 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Kategori</label>
-                        <select name="category_id" class="form-select" required>
-                            {% for c in categories %}
-                            <option value="{{ c.id }}" {% if transaction.category and c.id == transaction.category.id %}selected{% endif %}>
-                                {{ c.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                    {% if transaction.transactionType == 'TRANSFER' %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Dari Dompet</label>
+                            <select name="wallet_id" class="form-select" required>
+                                {% for w in wallets %}
+                                <option value="{{ w.id }}" {% if w.id == transaction.wallet.id %}selected{% endif %}>
+                                    {{ w.walletName }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
 
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Dompet</label>
-                        <select name="wallet_id" class="form-select" required>
-                            {% for w in wallets %}
-                            <option value="{{ w.id }}" {% if w.id == transaction.wallet.id %}selected{% endif %}>
-                                {{ w.walletName }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Ke Dompet</label>
+                            <select name="target_wallet_id" class="form-select" required>
+                                {% for w in wallets %}
+                                <option value="{{ w.id }}" {% if transaction.targetWallet and w.id == transaction.targetWallet.id %}selected{% endif %}>
+                                    {{ w.walletName }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                    {% else %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Kategori</label>
+                            <select name="category_id" class="form-select" required>
+                                {% for c in categories %}
+                                <option value="{{ c.id }}" {% if transaction.category and c.id == transaction.category.id %}selected{% endif %}>
+                                    {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Dompet</label>
+                            <select name="wallet_id" class="form-select" required>
+                                {% for w in wallets %}
+                                <option value="{{ w.id }}" {% if w.id == transaction.wallet.id %}selected{% endif %}>
+                                    {{ w.walletName }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
 
                     <div class="mb-4">
                         <label class="form-label text-muted small">Catatan</label>
@@ -81,11 +106,9 @@
 
         amountInput.addEventListener('keyup', function(e) {
             let value = this.value.replace(/[^0-9]/g, '');
-            
             if (value) {
                 value = parseInt(value, 10).toLocaleString('id-ID');
             }
-            
             this.value = value;
         });
     </script>
