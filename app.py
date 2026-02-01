@@ -70,47 +70,56 @@ def dashboard():
         return redirect(url_for('login'))
 
     headers = get_auth_headers()
+    
     wallets = []
     transactions = []
     total_saldo = 0
-    chart_labels = []
-    chart_values = []
+    username = session.get('user', {}).get('username', 'User')
+    
+    family_members = {} 
 
     try:
         resp_wallets = requests.get(f"{API_BASE_URL}/wallets", headers=headers)
         if resp_wallets.status_code == 200:
             wallets = resp_wallets.json()
             total_saldo = sum(w['balance'] for w in wallets)
-        elif resp_wallets.status_code == 403:
-            return redirect(url_for('logout'))
 
         resp_trx = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
         if resp_trx.status_code == 200:
             transactions = resp_trx.json()
-            
-            expense_map = {}
-            for t in transactions:
-                if t['transactionType'] == 'EXPENSE':
-                    cat_name = t['category']['name'] if t['category'] else 'Lain-lain'
-                    amount = t['amount']
-                    if cat_name in expense_map:
-                        expense_map[cat_name] += amount
-                    else:
-                        expense_map[cat_name] = amount
-            
-            chart_labels = list(expense_map.keys())
-            chart_values = list(expense_map.values())
-            
-    except:
-        pass
+
+        resp_family = requests.get(f"{API_BASE_URL}/users/family", headers=headers)
+        if resp_family.status_code == 200:
+            members_list = resp_family.json()
+            for m in members_list:
+                family_members[m['id']] = m['username']
+                
+    except Exception as e:
+        print(f"Error: {e}")
+
+    chart_labels = []
+    chart_values = []
+    expense_data = {}
+
+    for t in transactions:
+        if t['transactionType'] == 'EXPENSE':
+            cat_name = t['category']['name'] if t['category'] else 'Uncategorized'
+            if cat_name in expense_data:
+                expense_data[cat_name] += t['amount']
+            else:
+                expense_data[cat_name] = t['amount']
+
+    chart_labels = list(expense_data.keys())
+    chart_values = list(expense_data.values())
 
     return render_template('dashboard.html', 
                            wallets=wallets, 
-                           total_saldo=total_saldo, 
-                           transactions=transactions,
-                           chart_labels=chart_labels,
+                           transactions=transactions, 
+                           total_saldo=total_saldo,
+                           username=username,
+                           chart_labels=chart_labels, 
                            chart_values=chart_values,
-                           username=session.get('username'))
+                           family_members=family_members)
 
 @app.route('/tambah', methods=['GET', 'POST'])
 def tambah_transaksi():
@@ -391,6 +400,35 @@ def hapus_transaksi(transaction_id):
         flash(f"Error sistem: {e}", "danger")
         
     return redirect(url_for('dashboard'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+        family_id = request.form.get('family_id')
+
+        payload = {
+            "username": username,
+            "email": email,
+            "password": password,
+            "role": role,
+            "familyId": family_id
+        }
+
+        try:
+            resp = requests.post(f"{API_BASE_URL}/auth/register", json=payload)
+            if resp.status_code == 200:
+                flash("Registrasi berhasil! Silakan login.", "success")
+                return redirect(url_for('login'))
+            else:
+                flash(f"Gagal: {resp.text}", "danger")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    return render_template('register.html')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
