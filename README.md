@@ -1,31 +1,40 @@
-# 💻 Financial Tracker Web (Frontend)
+# 📊 Family Financial Tracker - Web Client
 
-Client-side application berbasis web untuk Financial Tracker. Dibangun menggunakan **Python Flask** dengan desain responsif menggunakan **Bootstrap 5**.
+A modern, responsive web interface for the Family Financial Tracker system. Built with **Python Flask**, this client consumes the Backend API to provide an interactive financial management experience.
 
-Aplikasi ini berfungsi sebagai antarmuka (User Interface) yang mengonsumsi REST API dari Backend Java.
+## 🌟 Application Highlights
 
-## 🎨 Features
-- **Secure Login:** Form Login terintegrasi dengan JWT Auth Backend.
-- **Dashboard:** Menampilkan total aset dan ringkasan dompet.
-- **Data Visualization:** Grafik Donut Chart (Chart.js) untuk analisis pengeluaran.
-- **Transaction History:** Tabel riwayat transaksi dengan indikator warna (Hijau/Merah).
-- **Multi-User Friendly:** Data yang tampil dinamis sesuai user yang login.
+* **📈 Interactive Dashboard:**
+    * Real-time financial overview with dynamic **Dual-Charts** (Income vs. Expense Pie Charts).
+    * **Net Cash Flow Indicator:** Instantly visualize surplus or deficit status.
+    * **Global Search:** Filter transaction history by keyword, date, or category instantly.
 
-## 🚀 Tech Stack
-- **Core:** Python 3.10+
-- **Web Framework:** Flask
-- **Styling:** Bootstrap 5 (CDN)
-- **Charting:** Chart.js (CDN)
-- **HTTP Client:** Python Requests
+* **📅 Smart Calendar:**
+    * Integrated **FullCalendar.js** to visualize daily spending habits.
+    * Interactive events: Click on any date to view, edit, or delete specific transactions via a modal popup.
 
-## ⚙️ Prerequisites
-1. Python 3.x terinstall.
-2. Backend Java (`financial-tracker-backend`) harus sedang berjalan di port `8080`.
+* **📑 Comprehensive Reporting:**
+    * **Advanced Statistics:** Detailed breakdown of spending per category and wallet distribution.
+    * **Export Options:**
+        * 📥 **Download CSV:** Export raw data for Excel/Google Sheets analysis.
+        * 🖨️ **Print/PDF:** Printer-friendly layout for generating professional monthly reports.
 
-## 🛠️ Installation & Setup
+* **🔄 Fund Management:**
+    * Intuitive UI for recording Income, Expenses, and **Wallet-to-Wallet Transfers**.
 
-### 1. Install Dependencies
-Buka terminal di folder project ini, lalu install library yang dibutuhkan:
+## 🛠️ Tech Stack
 
+* **Language:** Python 3.11+
+* **Framework:** Flask (Jinja2 Templating)
+* **Styling:** Bootstrap 5 (Responsive & Mobile-ready)
+* **Visualization:** Chart.js, FullCalendar
+* **Integration:** REST API Consumption (via Python `requests`)
+
+## ⚙️ Installation & Usage
+
+### 1. Prerequisites
+Ensure the Backend API is running on port `8080`.
+
+### 2. Install Dependencies
 ```bash
-pip install -r requirements.txt
+pip install flask requests
