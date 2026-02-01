@@ -5,18 +5,76 @@
     <title>Laporan Statistik</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            
+            body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+
+            .container { 
+                min-width: 100% !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            .row { 
+                display: flex !important; 
+                flex-wrap: nowrap !important; 
+            }
+            
+            /* Paksa lebar kolom sesuai layar desktop */
+            .col-md-4 { width: 33.33% !important; flex: 0 0 33.33% !important; }
+            .col-md-8 { width: 66.66% !important; flex: 0 0 66.66% !important; }
+            .col-md-6 { width: 50% !important; flex: 0 0 50% !important; }
+            .col-12   { width: 100% !important; flex: 0 0 100% !important; }
+
+            /* 4. Perbaikan Card & Chart */
+            .card {
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+                break-inside: avoid; /* Mencegah card terpotong beda halaman */
+                margin-bottom: 20px !important;
+            }
+            .card-header {
+                background-color: #f8f9fa !important; /* Warna header tetap abu muda */
+                border-bottom: 1px solid #ddd !important;
+            }
+            
+            /* Pastikan Canvas Chart terlihat */
+            canvas {
+                max-width: 100% !important;
+                display: block !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-light">
 
-    <nav class="navbar navbar-dark bg-primary mb-4">
+    <nav class="navbar navbar-dark bg-primary mb-4 no-print">
         <div class="container">
             <span class="navbar-brand mb-0 h1">📊 Laporan Keuangan</span>
-            <a href="/" class="btn btn-sm btn-light text-primary fw-bold">Kembali ke Dashboard</a>
+            <div class="d-flex gap-2">
+                <a href="/" class="btn btn-sm btn-light text-primary fw-bold">Dashboard</a>
+            </div>
         </div>
     </nav>
 
     <div class="container mb-5">
         
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0 text-muted">Ringkasan Kinerja Keuangan</h4>
+            <div class="d-flex gap-2 no-print">
+                <button onclick="window.print()" class="btn btn-outline-secondary">
+                    🖨️ Print / Save PDF
+                </button>
+                <a href="/download_laporan" class="btn btn-success">
+                    📥 Download Excel (.csv)
+                </a>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 h-100 text-center">
@@ -27,8 +85,8 @@
                         </h2>
                         <hr>
                         <div class="d-flex justify-content-between px-3">
-                            <span class="text-success">Masuk: Rp {{ "{:,.0f}".format(income).replace(',', '.') }}</span>
-                            <span class="text-danger">Keluar: Rp {{ "{:,.0f}".format(expense).replace(',', '.') }}</span>
+                            <span class="text-success">Masuk: <br> Rp {{ "{:,.0f}".format(income).replace(',', '.') }}</span>
+                            <span class="text-danger">Keluar: <br> Rp {{ "{:,.0f}".format(expense).replace(',', '.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -83,7 +141,9 @@
     </div>
 
     <script>
-        // 1. Bar Chart (Income vs Expense)
+        Chart.defaults.animation = false; 
+        Chart.defaults.responsive = true;
+
         const ctxBar = document.getElementById('barChart');
         new Chart(ctxBar, {
             type: 'bar',
@@ -94,10 +154,9 @@
                     { label: 'Pengeluaran', data: [{{ expense }}], backgroundColor: '#dc3545' }
                 ]
             },
-            options: { indexAxis: 'y', responsive: true }
+            options: { indexAxis: 'y' }
         });
 
-        // 2. Pie Chart Pemasukan per Kategori
         const incLabels = {{ inc_cat_labels | tojson | default([]) }};
         const incData = {{ inc_cat_values | tojson | default([]) }};
         if (incData.length > 0) {
@@ -113,7 +172,6 @@
             });
         }
 
-        // 3. Pie Chart Pengeluaran per Kategori
         const expLabels = {{ exp_cat_labels | tojson | default([]) }};
         const expData = {{ exp_cat_values | tojson | default([]) }};
         if (expData.length > 0) {
@@ -129,7 +187,6 @@
             });
         }
 
-        // 4. Bar Chart Dompet
         const walletLabels = {{ wallet_labels | tojson | default([]) }};
         const walletData = {{ wallet_data | tojson | default([]) }};
         new Chart(document.getElementById('walletChart'), {
@@ -141,8 +198,7 @@
                     data: walletData,
                     backgroundColor: '#0d6efd'
                 }]
-            },
-            options: { responsive: true }
+            }
         });
     </script>
 </body>

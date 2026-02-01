@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
 from datetime import datetime
 import requests
+import csv
+import io
 
 app = Flask(__name__)
 app.secret_key = 'kunci_sangat_rahasia_frontend'
@@ -450,6 +452,52 @@ def statistik():
                            inc_cat_values=list(income_cat_map.values()),
                            exp_cat_labels=list(expense_cat_map.keys()),
                            exp_cat_values=list(expense_cat_map.values()))
+
+@app.route('/download_laporan')
+def download_laporan():
+    if 'token' not in session:
+        return redirect(url_for('login'))
+
+    headers = get_auth_headers()
+    
+    try:
+        resp = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
+        if resp.status_code != 200:
+            flash("Gagal mengambil data untuk download", "danger")
+            return redirect(url_for('statistik'))
+            
+        transactions = resp.json()
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        writer.writerow(['ID Transaksi', 'Tanggal', 'Tipe', 'Kategori', 'Keterangan', 'Jumlah (Rp)', 'Dompet Sumber', 'Dompet Tujuan'])
+        
+        for t in transactions:
+            t_date = t['transactionDate'][:16].replace('T', ' ')
+            t_type = t['transactionType']
+            t_cat = t['category']['name'] if t.get('category') else '-'
+            t_desc = t.get('description', '-')
+            t_amount = t['amount']
+            t_wallet = t['wallet']['walletName'] if t.get('wallet') else '-'
+            t_target = t['targetWallet']['walletName'] if t.get('targetWallet') else '-'
+            
+            if t_type == 'TRANSFER':
+                t_cat = 'TRANSFER ANTAR DOMPET'
+            
+            writer.writerow([t['id'], t_date, t_type, t_cat, t_desc, t_amount, t_wallet, t_target])
+            
+        output.seek(0)
+        
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=laporan_keuangan.csv"}
+        )
+
+    except Exception as e:
+        flash(f"Error download: {e}", "danger")
+        return redirect(url_for('statistik'))
 
 @app.route('/hapus/<int:transaction_id>', methods=['POST']) 
 def hapus_transaksi(transaction_id):
