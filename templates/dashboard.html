@@ -177,9 +177,7 @@
     <div class="mb-5"></div>
 
     <script>
-        // Chart Pengeluaran
         const ctxExp = document.getElementById('expenseChart');
-        // 'default([])' mencegah error jika data kosong/undefined
         const expLabels = {{ expense_labels | tojson | default([]) }};
         const expData = {{ expense_values | tojson | default([]) }};
 
@@ -201,7 +199,6 @@
             });
         }
 
-        // Chart Pemasukan
         const ctxInc = document.getElementById('incomeChart');
         const incLabels = {{ income_labels | tojson | default([]) }};
         const incData = {{ income_values | tojson | default([]) }};

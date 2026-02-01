@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Keuangan</title>
+    <title>Laporan Statistik</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -10,92 +10,140 @@
 
     <nav class="navbar navbar-dark bg-primary mb-4">
         <div class="container">
-            <a href="/" class="navbar-brand">⬅️ Kembali ke Dashboard</a>
-            <span class="navbar-text text-white fw-bold">📊 Analisis Keuangan</span>
+            <span class="navbar-brand mb-0 h1">📊 Laporan Keuangan</span>
+            <a href="/" class="btn btn-sm btn-light text-primary fw-bold">Kembali ke Dashboard</a>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container mb-5">
         
-        <div class="row mb-4 text-center">
-            <div class="col-md-6">
-                <div class="card shadow-sm border-success border-top border-4">
-                    <div class="card-body">
-                        <h6 class="text-muted">Total Pemasukan</h6>
-                        <h3 class="text-success">Rp {{ "{:,.0f}".format(income).replace(',', '.') }}</h3>
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100 text-center">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <h5 class="text-muted">Arus Kas Bersih</h5>
+                        <h2 class="{% if (income - expense) >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                            Rp {{ "{:,.0f}".format(income - expense).replace(',', '.') }}
+                        </h2>
+                        <hr>
+                        <div class="d-flex justify-content-between px-3">
+                            <span class="text-success">Masuk: Rp {{ "{:,.0f}".format(income).replace(',', '.') }}</span>
+                            <span class="text-danger">Keluar: Rp {{ "{:,.0f}".format(expense).replace(',', '.') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card shadow-sm border-danger border-top border-4">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold">Perbandingan Pemasukan vs Pengeluaran</div>
                     <div class="card-body">
-                        <h6 class="text-muted">Total Pengeluaran</h6>
-                        <h3 class="text-danger">Rp {{ "{:,.0f}".format(expense).replace(',', '.') }}</h3>
+                        <canvas id="barChart" style="max-height: 250px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-success text-white">Sumber Pemasukan (Kategori)</div>
+                    <div class="card-body">
+                        <canvas id="incomeCatChart"></canvas>
+                        {% if not inc_cat_values %}
+                            <p class="text-center text-muted mt-5">Belum ada data pemasukan.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-danger text-white">Distribusi Pengeluaran (Kategori)</div>
+                    <div class="card-body">
+                        <canvas id="expenseCatChart"></canvas>
+                        {% if not exp_cat_values %}
+                            <p class="text-center text-muted mt-5">Belum ada data pengeluaran.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="row">
-            
-            <div class="col-md-6 mb-4">
-                <div class="card shadow">
-                    <div class="card-header bg-white fw-bold">⚖️ Pemasukan vs Pengeluaran</div>
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white">Posisi Saldo Dompet</div>
                     <div class="card-body">
-                        <canvas id="compareChart"></canvas>
+                        <canvas id="walletChart" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
             </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card shadow">
-                    <div class="card-header bg-white fw-bold">🎒 Saldo per Dompet</div>
-                    <div class="card-body">
-                        <canvas id="walletChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
         </div>
+
     </div>
 
     <script>
-        const ctxCompare = document.getElementById('compareChart');
-        new Chart(ctxCompare, {
+        // 1. Bar Chart (Income vs Expense)
+        const ctxBar = document.getElementById('barChart');
+        new Chart(ctxBar, {
             type: 'bar',
             data: {
-                labels: ['Pemasukan', 'Pengeluaran'],
-                datasets: [{
-                    label: 'Total (Rp)',
-                    data: [{{ income }}, {{ expense }}],
-                    backgroundColor: ['#198754', '#dc3545'],
-                    borderRadius: 5
-                }]
+                labels: ['Total'],
+                datasets: [
+                    { label: 'Pemasukan', data: [{{ income }}], backgroundColor: '#198754' },
+                    { label: 'Pengeluaran', data: [{{ expense }}], backgroundColor: '#dc3545' }
+                ]
             },
-            options: {
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
+            options: { indexAxis: 'y', responsive: true }
         });
 
-        const ctxWallet = document.getElementById('walletChart');
-        new Chart(ctxWallet, {
+        // 2. Pie Chart Pemasukan per Kategori
+        const incLabels = {{ inc_cat_labels | tojson | default([]) }};
+        const incData = {{ inc_cat_values | tojson | default([]) }};
+        if (incData.length > 0) {
+            new Chart(document.getElementById('incomeCatChart'), {
+                type: 'pie',
+                data: {
+                    labels: incLabels,
+                    datasets: [{
+                        data: incData,
+                        backgroundColor: ['#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e67e22', '#1abc9c']
+                    }]
+                }
+            });
+        }
+
+        // 3. Pie Chart Pengeluaran per Kategori
+        const expLabels = {{ exp_cat_labels | tojson | default([]) }};
+        const expData = {{ exp_cat_values | tojson | default([]) }};
+        if (expData.length > 0) {
+            new Chart(document.getElementById('expenseCatChart'), {
+                type: 'pie',
+                data: {
+                    labels: expLabels,
+                    datasets: [{
+                        data: expData,
+                        backgroundColor: ['#e74c3c', '#e67e22', '#f1c40f', '#9b59b6', '#34495e', '#95a5a6']
+                    }]
+                }
+            });
+        }
+
+        // 4. Bar Chart Dompet
+        const walletLabels = {{ wallet_labels | tojson | default([]) }};
+        const walletData = {{ wallet_data | tojson | default([]) }};
+        new Chart(document.getElementById('walletChart'), {
             type: 'bar',
             data: {
-                labels: {{ wallet_labels | tojson }},
+                labels: walletLabels,
                 datasets: [{
-                    label: 'Saldo (Rp)',
-                    data: {{ wallet_data | tojson }},
-                    backgroundColor: '#0d6efd',
-                    borderRadius: 5
+                    label: 'Saldo Saat Ini',
+                    data: walletData,
+                    backgroundColor: '#0d6efd'
                 }]
             },
-            options: {
-                indexAxis: 'y',
-                scales: { x: { beginAtZero: true } }
-            }
+            options: { responsive: true }
         });
     </script>
-
 </body>
 </html>

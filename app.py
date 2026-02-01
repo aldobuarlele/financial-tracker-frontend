@@ -348,6 +348,7 @@ def kalender():
 
     headers = get_auth_headers()
     events = []
+    transactions = [] 
 
     try:
         resp = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
@@ -373,21 +374,23 @@ def kalender():
                         'title': f"+ {vals['INCOME']:,}".replace(',', '.'),
                         'start': date,
                         'color': '#198754',
-                        'textColor': 'white'
+                        'textColor': 'white',
+                        'extendedProps': {'type': 'INCOME'}
                     })
                 
                 if vals['EXPENSE'] > 0:
                     events.append({
                         'title': f"- {vals['EXPENSE']:,}".replace(',', '.'),
                         'start': date,
-                        'color': '#dc3545',
-                        'textColor': 'white'
+                        'color': '#dc3545', 
+                        'textColor': 'white',
+                        'extendedProps': {'type': 'EXPENSE'}
                     })
 
     except Exception as e:
         print(f"Error Kalender: {e}")
 
-    return render_template('kalender.html', events=events)
+    return render_template('kalender.html', events=events, transactions=transactions)
 
 @app.route('/statistik')
 def statistik():
@@ -402,15 +405,31 @@ def statistik():
     wallet_names = []
     wallet_balances = []
 
+    income_cat_map = {}
+    expense_cat_map = {}
+
     try:
         resp_trx = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
         if resp_trx.status_code == 200:
             transactions = resp_trx.json()
             for t in transactions:
-                if t['transactionType'] == 'INCOME':
-                    total_income += t['amount']
-                elif t['transactionType'] == 'EXPENSE':
-                    total_expense += t['amount']
+                amount = t['amount']
+                tipe = t['transactionType']
+                cat_name = t['category']['name'] if t['category'] else 'Tanpa Kategori'
+
+                if tipe == 'INCOME':
+                    total_income += amount
+                    if cat_name in income_cat_map:
+                        income_cat_map[cat_name] += amount
+                    else:
+                        income_cat_map[cat_name] = amount
+
+                elif tipe == 'EXPENSE':
+                    total_expense += amount
+                    if cat_name in expense_cat_map:
+                        expense_cat_map[cat_name] += amount
+                    else:
+                        expense_cat_map[cat_name] = amount
 
         resp_wallet = requests.get(f"{API_BASE_URL}/wallets", headers=headers)
         if resp_wallet.status_code == 200:
@@ -426,7 +445,11 @@ def statistik():
                            income=total_income, 
                            expense=total_expense,
                            wallet_labels=wallet_names,
-                           wallet_data=wallet_balances)
+                           wallet_data=wallet_balances,
+                           inc_cat_labels=list(income_cat_map.keys()),
+                           inc_cat_values=list(income_cat_map.values()),
+                           exp_cat_labels=list(expense_cat_map.keys()),
+                           exp_cat_values=list(expense_cat_map.values()))
 
 @app.route('/hapus/<int:transaction_id>', methods=['POST']) 
 def hapus_transaksi(transaction_id):
