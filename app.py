@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
+from datetime import datetime
 import requests
 
 app = Flask(__name__)
@@ -189,6 +190,101 @@ def tambah_kategori():
             flash(f"Error: {e}", "danger")
 
     return render_template('tambah_kategori.html')
+
+@app.route('/kalender')
+def kalender():
+    if 'token' not in session:
+        return redirect(url_for('login'))
+
+    headers = get_auth_headers()
+    events = [] # Ini data yang akan dimakan oleh Kalender
+
+    try:
+        resp = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
+        if resp.status_code == 200:
+            transactions = resp.json()
+            
+            # 1. Rangkum Data per Tanggal (Agar kalender tidak penuh sesak)
+            summary = {}
+            
+            for t in transactions:
+                # Ambil tanggal saja (YYYY-MM-DD) dari format ISO (YYYY-MM-DDTHH:mm:ss)
+                date_str = t['transactionDate'][:10]
+                amount = t['amount']
+                jenis = t['transactionType'] # INCOME atau EXPENSE
+                
+                if date_str not in summary:
+                    summary[date_str] = {'INCOME': 0, 'EXPENSE': 0}
+                
+                summary[date_str][jenis] += amount
+
+            # 2. Ubah ke Format FullCalendar
+            for date, vals in summary.items():
+                # Kalau ada Pemasukan, buat event Hijau
+                if vals['INCOME'] > 0:
+                    events.append({
+                        'title': f"+ {vals['INCOME']:,}".replace(',', '.'), # Format Rp
+                        'start': date,
+                        'color': '#198754', # Hijau Bootstrap
+                        'textColor': 'white'
+                    })
+                
+                # Kalau ada Pengeluaran, buat event Merah
+                if vals['EXPENSE'] > 0:
+                    events.append({
+                        'title': f"- {vals['EXPENSE']:,}".replace(',', '.'),
+                        'start': date,
+                        'color': '#dc3545', # Merah Bootstrap
+                        'textColor': 'white'
+                    })
+
+    except Exception as e:
+        print(f"Error Kalender: {e}")
+
+    return render_template('kalender.html', events=events)
+
+@app.route('/statistik')
+def statistik():
+    if 'token' not in session:
+        return redirect(url_for('login'))
+
+    headers = get_auth_headers()
+    
+    # Data untuk Chart 1: Income vs Expense
+    total_income = 0
+    total_expense = 0
+    
+    # Data untuk Chart 2: Saldo Dompet
+    wallet_names = []
+    wallet_balances = []
+
+    try:
+        # 1. Ambil Transaksi untuk hitung Income vs Expense
+        resp_trx = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
+        if resp_trx.status_code == 200:
+            transactions = resp_trx.json()
+            for t in transactions:
+                if t['transactionType'] == 'INCOME':
+                    total_income += t['amount']
+                else:
+                    total_expense += t['amount']
+
+        # 2. Ambil Wallet untuk chart Saldo
+        resp_wallet = requests.get(f"{API_BASE_URL}/wallets", headers=headers)
+        if resp_wallet.status_code == 200:
+            wallets = resp_wallet.json()
+            for w in wallets:
+                wallet_names.append(w['walletName'])
+                wallet_balances.append(w['balance'])
+
+    except Exception as e:
+        print(f"Error Statistik: {e}")
+
+    return render_template('statistik.html', 
+                           income=total_income, 
+                           expense=total_expense,
+                           wallet_labels=wallet_names,
+                           wallet_data=wallet_balances)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

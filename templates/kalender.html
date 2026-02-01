@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kalender Keuangan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    
+    <style>
+        /* Agar event di kalender terlihat rapi */
+        .fc-event {
+            cursor: pointer;
+            font-size: 0.85em;
+            border: none;
+            padding: 2px 4px;
+        }
+        #calendar {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a href="/" class="navbar-brand">⬅️ Kembali ke Dashboard</a>
+            <span class="navbar-text text-white">📅 Kalender Transaksi</span>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="card shadow border-0">
+            <div class="card-body">
+                <div id='calendar'></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            
+            // Ambil data dari Python
+            var myEvents = {{ events | tojson }};
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth', // Tampilan Bulanan
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek' // Bisa ganti mode List
+                },
+                events: myEvents, // Masukkan data kita
+                eventClick: function(info) {
+                    alert('Total: ' + info.event.title + '\nTanggal: ' + info.event.start.toLocaleDateString());
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+
+</body>
+</html>
