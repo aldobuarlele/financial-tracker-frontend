@@ -8,29 +8,77 @@
 <body class="bg-light">
     <div class="container mt-5" style="max-width: 500px;">
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">🏷️ Tambah Kategori</h5>
+            <div class="card-header {{ 'bg-success' if preset_type == 'INCOME' else 'bg-danger' if preset_type == 'EXPENSE' else 'bg-primary' }} text-white">
+                <h5 class="mb-0">🏷️ Tambah Kategori {{ 'Pemasukan' if preset_type == 'INCOME' else 'Pengeluaran' if preset_type == 'EXPENSE' else '' }}</h5>
             </div>
             <div class="card-body">
                 <form method="POST">
+                    
                     <div class="mb-3">
                         <label class="form-label">Nama Kategori</label>
-                        <input type="text" name="name" class="form-control" placeholder="Contoh: Pulsa, Skincare, Crypto" required>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: Belanja, Gaji" required autofocus>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">Jenis</label>
-                        <select name="type" class="form-select">
-                            <option value="EXPENSE">Pengeluaran</option>
-                            <option value="INCOME">Pemasukan</option>
+                        {% if preset_type %}
+                            <input type="hidden" name="type" value="{{ preset_type }}">
+                            <input type="text" class="form-control" value="{{ 'Pemasukan' if preset_type == 'INCOME' else 'Pengeluaran' }}" readonly>
+                        {% else %}
+                            <select name="type" id="typeSelect" class="form-select">
+                                <option value="EXPENSE">Pengeluaran</option>
+                                <option value="INCOME">Pemasukan</option>
+                            </select>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Sub-Kategori dari (Opsional)</label>
+                        <select name="parent_id" id="parentSelect" class="form-select">
+                            <option value="">-- Tidak ada (Jadikan Induk) --</option>
+                            {% for p in parents %}
+                                {% if preset_type %}
+                                    {% if p.type == preset_type %}
+                                    <option value="{{ p.id }}">{{ p.name }}</option>
+                                    {% endif %}
+                                {% else %}
+                                    <option value="{{ p.id }}" data-type="{{ p.type }}">{{ p.name }} ({{ p.type }})</option>
+                                {% endif %}
+                            {% endfor %}
                         </select>
                     </div>
+
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                        <a href="/" class="btn btn-secondary">Batal</a>
+                        <button type="submit" class="btn {{ 'bg-success' if preset_type == 'INCOME' else 'bg-danger' if preset_type == 'EXPENSE' else 'btn-primary' }} text-white">Simpan</button>
+                        {% if preset_type %}
+                            <a href="/tambah?mode={{ preset_type }}" class="btn btn-secondary">Batal</a>
+                        {% else %}
+                            <a href="/" class="btn btn-secondary">Batal</a>
+                        {% endif %}
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    {% if not preset_type %}
+    <script>
+        const typeSelect = document.getElementById('typeSelect');
+        const parentSelect = document.getElementById('parentSelect');
+        const allOptions = Array.from(parentSelect.options);
+
+        function filterParents() {
+            const selectedType = typeSelect.value;
+            parentSelect.value = "";
+            allOptions.forEach(option => {
+                if (option.value === "") return;
+                const parentType = option.getAttribute('data-type');
+                option.style.display = (parentType === selectedType) ? 'block' : 'none';
+            });
+        }
+        typeSelect.addEventListener('change', filterParents);
+        filterParents();
+    </script>
+    {% endif %}
 </body>
 </html>

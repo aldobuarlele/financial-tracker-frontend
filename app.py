@@ -13,6 +13,29 @@ def get_auth_headers():
         return {'Authorization': f'Bearer {token}'}
     return {}
 
+def organize_categories(categories_list):
+    parents = [c for c in categories_list if not c.get('parent')]
+    children = [c for c in categories_list if c.get('parent')]
+    
+    result = []
+    
+    for p in parents:
+        result.append(p)
+        
+        p_id = p['id']
+        my_kids = [k for k in children if k['parent']['id'] == p_id]
+        
+        for kid in my_kids:
+            kid['name'] = f" ↳ {kid['name']}"
+            result.append(kid)
+            
+    mapped_ids = [r['id'] for r in result]
+    for c in categories_list:
+        if c['id'] not in mapped_ids:
+            result.append(c)
+            
+    return result
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -131,7 +154,8 @@ def tambah_transaksi():
 
         resp_categories = requests.get(f"{API_BASE_URL}/categories?type={mode}", headers=headers)
         if resp_categories.status_code == 200:
-            categories = resp_categories.json()
+            raw_cats = resp_categories.json()
+            categories = organize_categories(raw_cats)
     except:
         pass
 
@@ -172,12 +196,18 @@ def tambah_kategori():
         return redirect(url_for('login'))
     
     headers = get_auth_headers()
+    
+    preset_type = request.args.get('type') 
 
     if request.method == 'POST':
         data = {
             "name": request.form.get('name'),
-            "type": request.form.get('type')
+            "type": request.form.get('type'),
+            "parentId": request.form.get('parent_id')
         }
+        
+        if not data['parentId']:
+            data['parentId'] = None
 
         try:
             kirim = requests.post(f"{API_BASE_URL}/categories", json=data, headers=headers)
@@ -189,7 +219,15 @@ def tambah_kategori():
         except Exception as e:
             flash(f"Error: {e}", "danger")
 
-    return render_template('tambah_kategori.html')
+    try:
+        resp = requests.get(f"{API_BASE_URL}/categories", headers=headers)
+        if resp.status_code == 200:
+            all_cats = resp.json()
+            parents = [c for c in all_cats if not c.get('parent')]
+    except:
+        pass
+
+    return render_template('tambah_kategori.html', parents=parents, preset_type=preset_type)
 
 @app.route('/kalender')
 def kalender():
@@ -197,44 +235,39 @@ def kalender():
         return redirect(url_for('login'))
 
     headers = get_auth_headers()
-    events = [] # Ini data yang akan dimakan oleh Kalender
+    events = []
 
     try:
         resp = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
         if resp.status_code == 200:
             transactions = resp.json()
             
-            # 1. Rangkum Data per Tanggal (Agar kalender tidak penuh sesak)
             summary = {}
             
             for t in transactions:
-                # Ambil tanggal saja (YYYY-MM-DD) dari format ISO (YYYY-MM-DDTHH:mm:ss)
                 date_str = t['transactionDate'][:10]
                 amount = t['amount']
-                jenis = t['transactionType'] # INCOME atau EXPENSE
+                jenis = t['transactionType']
                 
                 if date_str not in summary:
                     summary[date_str] = {'INCOME': 0, 'EXPENSE': 0}
                 
                 summary[date_str][jenis] += amount
 
-            # 2. Ubah ke Format FullCalendar
             for date, vals in summary.items():
-                # Kalau ada Pemasukan, buat event Hijau
                 if vals['INCOME'] > 0:
                     events.append({
-                        'title': f"+ {vals['INCOME']:,}".replace(',', '.'), # Format Rp
+                        'title': f"+ {vals['INCOME']:,}".replace(',', '.'),
                         'start': date,
-                        'color': '#198754', # Hijau Bootstrap
+                        'color': '#198754',
                         'textColor': 'white'
                     })
                 
-                # Kalau ada Pengeluaran, buat event Merah
                 if vals['EXPENSE'] > 0:
                     events.append({
                         'title': f"- {vals['EXPENSE']:,}".replace(',', '.'),
                         'start': date,
-                        'color': '#dc3545', # Merah Bootstrap
+                        'color': '#dc3545',
                         'textColor': 'white'
                     })
 
@@ -250,16 +283,13 @@ def statistik():
 
     headers = get_auth_headers()
     
-    # Data untuk Chart 1: Income vs Expense
     total_income = 0
     total_expense = 0
     
-    # Data untuk Chart 2: Saldo Dompet
     wallet_names = []
     wallet_balances = []
 
     try:
-        # 1. Ambil Transaksi untuk hitung Income vs Expense
         resp_trx = requests.get(f"{API_BASE_URL}/transactions", headers=headers)
         if resp_trx.status_code == 200:
             transactions = resp_trx.json()
@@ -269,7 +299,6 @@ def statistik():
                 else:
                     total_expense += t['amount']
 
-        # 2. Ambil Wallet untuk chart Saldo
         resp_wallet = requests.get(f"{API_BASE_URL}/wallets", headers=headers)
         if resp_wallet.status_code == 200:
             wallets = resp_wallet.json()
@@ -285,6 +314,27 @@ def statistik():
                            expense=total_expense,
                            wallet_labels=wallet_names,
                            wallet_data=wallet_balances)
+
+@app.route('/hapus/<int:transaction_id>', methods=['POST']) 
+def hapus_transaksi(transaction_id):
+    if 'token' not in session:
+        return redirect(url_for('login'))
+    
+    headers = get_auth_headers()
+    
+    try:
+
+        resp = requests.delete(f"{API_BASE_URL}/transactions/{transaction_id}", headers=headers)
+        
+        if resp.status_code == 200:
+            flash("Transaksi berhasil dihapus & saldo dikembalikan.", "success")
+        else:
+            flash(f"Gagal menghapus: {resp.text}", "danger")
+            
+    except Exception as e:
+        flash(f"Error sistem: {e}", "danger")
+        
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

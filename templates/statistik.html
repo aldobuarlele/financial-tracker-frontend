@@ -60,7 +60,6 @@
     </div>
 
     <script>
-        // --- CHART 1: Comparison ---
         const ctxCompare = document.getElementById('compareChart');
         new Chart(ctxCompare, {
             type: 'bar',
@@ -69,7 +68,7 @@
                 datasets: [{
                     label: 'Total (Rp)',
                     data: [{{ income }}, {{ expense }}],
-                    backgroundColor: ['#198754', '#dc3545'], // Hijau & Merah
+                    backgroundColor: ['#198754', '#dc3545'],
                     borderRadius: 5
                 }]
             },
@@ -79,7 +78,6 @@
             }
         });
 
-        // --- CHART 2: Wallets ---
         const ctxWallet = document.getElementById('walletChart');
         new Chart(ctxWallet, {
             type: 'bar',
@@ -88,12 +86,12 @@
                 datasets: [{
                     label: 'Saldo (Rp)',
                     data: {{ wallet_data | tojson }},
-                    backgroundColor: '#0d6efd', // Biru
+                    backgroundColor: '#0d6efd',
                     borderRadius: 5
                 }]
             },
             options: {
-                indexAxis: 'y', // Ubah jadi Horizontal Bar
+                indexAxis: 'y',
                 scales: { x: { beginAtZero: true } }
             }
         });

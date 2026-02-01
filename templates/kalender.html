@@ -45,17 +45,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             
-            // Ambil data dari Python
             var myEvents = {{ events | tojson }};
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth', // Tampilan Bulanan
+                initialView: 'dayGridMonth', 
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,listWeek' // Bisa ganti mode List
+                    right: 'dayGridMonth,listWeek'
                 },
-                events: myEvents, // Masukkan data kita
+                events: myEvents, 
                 eventClick: function(info) {
                     alert('Total: ' + info.event.title + '\nTanggal: ' + info.event.start.toLocaleDateString());
                 }
