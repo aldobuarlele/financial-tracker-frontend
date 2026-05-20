@@ -2,7 +2,17 @@
 
 A modern, responsive web interface for the Family Financial Tracker system. Built with **Python Flask**, this client consumes the Backend API to provide an interactive financial management experience.
 
- 
+## 🛠️ Tech Stack
+
+* **Language:** Python 3.11+
+* **Framework:** Flask (Jinja2 Templating)
+* **Styling:** Bootstrap 5 (Responsive & Mobile-ready)
+* **Visualization:** Chart.js, FullCalendar
+* **Integration:** REST API Consumption (via Python `requests`)
+
+* **🔄 Fund Management:**
+    * Intuitive UI for recording Income, Expenses, and **Wallet-to-Wallet Transfers**.
+    * 
 ## 🌟 Application Highlights
 
 * **📈 Interactive Dashboard:**
@@ -19,19 +29,6 @@ A modern, responsive web interface for the Family Financial Tracker system. Buil
     * **Export Options:**
         * 📥 **Download CSV:** Export raw data for Excel/Google Sheets analysis.
         * 🖨️ **Print/PDF:** Printer-friendly layout for generating professional monthly reports.
-
-
-## 🛠️ Tech Stack
-
-* **Language:** Python 3.11+
-* **Framework:** Flask (Jinja2 Templating)
-* **Styling:** Bootstrap 5 (Responsive & Mobile-ready)
-* **Visualization:** Chart.js, FullCalendar
-* **Integration:** REST API Consumption (via Python `requests`)
-
-* **🔄 Fund Management:**
-    * Intuitive UI for recording Income, Expenses, and **Wallet-to-Wallet Transfers**.
-    * 
 
 
 ## ⚙️ Installation & Usage
